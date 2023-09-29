@@ -28,6 +28,7 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
         }
         return result;
     }
+
     @Override
     public Equipamento persist(Equipamento equipamento) {
         var sql = "BEGIN" +
@@ -58,15 +59,9 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
         return equipamento;
     }
 
-    /**
-     * Método que retorna todas as Entidades
-     *
-     * @return
-     */
     @Override
     public List<Equipamento> findAll() {
-
-        List<Equipamento> equipamentos = new ArrayList<>();
+        List<Equipamento> equipamento = new ArrayList<>();
 
         try {
 
@@ -74,15 +69,14 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
             Connection connection = factory.getConnection();
 
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery( "SELECT * FROM equipamento" );
+            ResultSet resultSet = statement.executeQuery( "SELECT * FROM EQUIPAMENTO" );
 
             if (resultSet.isBeforeFirst()) {
                 while (resultSet.next()) {
                     Long id = resultSet.getLong( "ID_EQUIPAMENTO" );
                     String nome = resultSet.getString( "NM_EQUIPAMENTO" );
-                    String descrição = resultSet.getString( "DS_EQUIPAMENTO" );
-                    //Adicionando equipamentos na coleção
-                    equipamentos.add( new Equipamento( id, nome, descrição ) );
+                    String descrição = resultSet.getString("DS_EQUIPAMENTO");
+                    equipamento.add( new Equipamento( id, nome, descrição ) );
                 }
             }
 
@@ -92,15 +86,9 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
         } catch (SQLException e) {
             System.err.println( "Não foi possivel consultar os dados!\n" + e.getMessage() );
         }
-        return equipamentos;
+        return equipamento;
     }
 
-    /**
-     * Método que retorna uma Entity pelo seu identificador
-     *
-     * @param id
-     * @return
-     */
     @Override
     public Equipamento findById(Long id) {
         Equipamento equipamento = null;
@@ -118,7 +106,7 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
                     equipamento = new Equipamento(
                             resultSet.getLong( "ID_EQUIPAMENTO" ),
                             resultSet.getString( "NM_EQUIPAMENTO" ),
-                            resultSet.getString( "DS_EQUIPAMENTO" )
+                            resultSet.getString("DS_EQUIPAMENTO")
                     );
                 }
             } else {
@@ -135,41 +123,45 @@ public class EquipamentoRepository implements Repository<Equipamento, Long> {
 
     @Override
     public Equipamento update(Equipamento equipamento) {
+
+        PreparedStatement ps = null;
+
+        var sql = "UPDATE equipamento SET NM_EQUIPAMENTO = ? where ID_EQUIPAMENTO=?";
+
+        ConnectionFactory factory = ConnectionFactory.build();
+        Connection connection = factory.getConnection();
+
+        try {
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, equipamento.getNome());
+            ps.setLong(2, equipamento.getId());
+            int itensAtualizados = ps.executeUpdate();
+
+            ps.close();
+            connection.close();
+            if (itensAtualizados > 0) return findById(equipamento.getId());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
         return null;
     }
 
     @Override
-    public boolean delete(Long id) {.
+    public boolean delete(Long id) {
+        PreparedStatement ps = null;
+        var sql = "DELETE from equipamento where ID_EQUIPAMENTO=?";
+        ConnectionFactory factory = ConnectionFactory.build();
+        Connection connection = factory.getConnection();
+        try {
+            ps = connection.prepareStatement(sql);
+            ps.setLong(1,id);
+            int itensRemovidos = ps.executeUpdate();
+            ps.close();
+            connection.close();
+            if (itensRemovidos > 0) return true;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
         return false;
     }
-
-    private List<Equipamento> findByName(String texto) {
-
-        List<Equipamento> equipamentos = new ArrayList<>();
-        var sql = "SELECT * FROM equipamento where UPPER(NM_EQUIPAMENTO) like ?";
-
-        var factory = ConnectionFactory.build();
-        Connection connection = factory.getConnection();
-
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement( sql );
-            texto = Objects.nonNull( texto ) ? texto.toUpperCase() : "";
-            preparedStatement.setString( 1, "%" + texto + "%" );
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.isBeforeFirst()) {
-                while (resultSet.next()) {
-                    equipamentos.add(
-                            new Equipamento( resultSet.getLong( "ID_EQUIPAMENTO" ), resultSet.getString( "NM_EQUIPAMENTO" ),resultSet.getString( "DS_EQUIPAMENTO" ) )
-                    );
-                }
-            } else {
-                System.out.println( "Equipamento não encontrado com o nome = " + texto );
-            }
-            resultSet.close(); preparedStatement.close(); connection.close();
-        } catch (SQLException e) {
-            System.err.println( "Não foi possível executar a consulta: \n" + e.getMessage() );
-        }
-        return equipamentos;
-    }
-
 }
